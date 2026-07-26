@@ -1,0 +1,6 @@
+/dist/
+/vault-plugin-secrets-gitea
+*.out
+*.test
+.env
+test/plugins/
