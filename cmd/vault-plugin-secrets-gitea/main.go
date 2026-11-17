@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
 
-	gitea "git.unkin.net/unkin/vault-plugin-secrets-gitea"
+	gitea "github.com/IUCLabs/vault-plugin-secrets-gitea"
 )
 
 func main() {

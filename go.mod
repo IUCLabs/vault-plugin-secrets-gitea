@@ -1,4 +1,4 @@
-module git.unkin.net/unkin/vault-plugin-secrets-gitea
+module github.com/IUCLabs/vault-plugin-secrets-gitea
 
 go 1.25.0
 

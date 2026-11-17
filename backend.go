@@ -1,7 +1,7 @@
 // Package gitea implements a Vault / OpenBao secrets engine that mints
 // ephemeral, scoped Gitea personal access tokens on demand.
 //
-// Static Gitea bot users (teabot personalities, CI identities, ...) should never
+// Static Gitea bot users (CI identities, automation accounts, ...) should never
 // hold long-lived tokens. The engine is seeded with a single Gitea *site admin*
 // credential (username + password, HTTP Basic Auth) and, on each read of
 // creds/<role>, mints a fresh access token for the role's target user via the

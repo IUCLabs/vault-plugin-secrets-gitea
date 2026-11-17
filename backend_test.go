@@ -174,14 +174,14 @@ func TestLifecycle(t *testing.T) {
 	b, s := newTestBackend(t)
 	configure(t, b, s, srv.URL)
 
-	req(t, b, s, logical.CreateOperation, "roles/teabot", map[string]interface{}{
-		"username": "teabot",
+	req(t, b, s, logical.CreateOperation, "roles/ci-bot", map[string]interface{}{
+		"username": "ci-bot",
 		"scopes":   "read:repository,write:issue",
 		"ttl":      "1h",
 		"max_ttl":  "24h",
 	})
 
-	creds := req(t, b, s, logical.ReadOperation, "creds/teabot", nil)
+	creds := req(t, b, s, logical.ReadOperation, "creds/ci-bot", nil)
 	if creds.Secret == nil {
 		t.Fatal("creds returned no secret")
 	}
@@ -191,13 +191,13 @@ func TestLifecycle(t *testing.T) {
 	if tokenID == "" || tokenVal == "" {
 		t.Fatalf("creds missing token/token_id: %#v", creds.Data)
 	}
-	if username != "teabot" {
-		t.Errorf("username = %q, want teabot", username)
+	if username != "ci-bot" {
+		t.Errorf("username = %q, want ci-bot", username)
 	}
 	if creds.Data["gitea_url"].(string) != srv.URL {
 		t.Errorf("gitea_url = %q, want %q", creds.Data["gitea_url"], srv.URL)
 	}
-	if !fake.has("teabot", tokenID) {
+	if !fake.has("ci-bot", tokenID) {
 		t.Error("minted token not present in gitea")
 	}
 
@@ -218,7 +218,7 @@ func TestLifecycle(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("revoke: %v", err)
 	}
-	if fake.has("teabot", tokenID) {
+	if fake.has("ci-bot", tokenID) {
 		t.Error("token still present after revoke")
 	}
 }
@@ -230,10 +230,10 @@ func TestRevokeIsIdempotent(t *testing.T) {
 
 	b, s := newTestBackend(t)
 	configure(t, b, s, srv.URL)
-	req(t, b, s, logical.CreateOperation, "roles/teabot", map[string]interface{}{
-		"username": "teabot", "scopes": "read:repository",
+	req(t, b, s, logical.CreateOperation, "roles/ci-bot", map[string]interface{}{
+		"username": "ci-bot", "scopes": "read:repository",
 	})
-	creds := req(t, b, s, logical.ReadOperation, "creds/teabot", nil)
+	creds := req(t, b, s, logical.ReadOperation, "creds/ci-bot", nil)
 
 	revoke := func() error {
 		_, err := b.HandleRequest(context.Background(), &logical.Request{
@@ -263,7 +263,7 @@ func TestScopeValidation(t *testing.T) {
 	resp, err := b.HandleRequest(context.Background(), &logical.Request{
 		Operation: logical.CreateOperation,
 		Path:      "roles/bad",
-		Data:      map[string]interface{}{"username": "teabot", "scopes": "read:repository,bogus:scope"},
+		Data:      map[string]interface{}{"username": "ci-bot", "scopes": "read:repository,bogus:scope"},
 		Storage:   s,
 	})
 	if err != nil {
@@ -275,7 +275,7 @@ func TestScopeValidation(t *testing.T) {
 
 	// Duplicate + mixed-case scopes normalise down cleanly.
 	req(t, b, s, logical.CreateOperation, "roles/ok", map[string]interface{}{
-		"username": "teabot", "scopes": "Read:Repository, read:repository ,write:issue",
+		"username": "ci-bot", "scopes": "Read:Repository, read:repository ,write:issue",
 	})
 	role := req(t, b, s, logical.ReadOperation, "roles/ok", nil)
 	got, _ := role.Data["scopes"].([]string)
@@ -296,7 +296,7 @@ func TestRoleRequiresUsernameAndScopes(t *testing.T) {
 	resp, err := b.HandleRequest(context.Background(), &logical.Request{
 		Operation: logical.CreateOperation,
 		Path:      "roles/nos",
-		Data:      map[string]interface{}{"username": "teabot"},
+		Data:      map[string]interface{}{"username": "ci-bot"},
 		Storage:   s,
 	})
 	if err != nil {
@@ -355,7 +355,7 @@ func TestCredsBeforeConfig(t *testing.T) {
 	// Roles can be written without config, but minting from one before config is
 	// written must fail with the not-configured error.
 	req(t, b, s, logical.CreateOperation, "roles/x", map[string]interface{}{
-		"username": "teabot", "scopes": "read:repository",
+		"username": "ci-bot", "scopes": "read:repository",
 	})
 	_, err := b.HandleRequest(context.Background(), &logical.Request{
 		Operation: logical.ReadOperation,
@@ -383,10 +383,10 @@ func TestRotateRoot(t *testing.T) {
 
 	// The fake now only accepts the new password; the engine's stored config must
 	// have been updated to match, so minting still works after rotation.
-	req(t, b, s, logical.CreateOperation, "roles/teabot", map[string]interface{}{
-		"username": "teabot", "scopes": "read:repository",
+	req(t, b, s, logical.CreateOperation, "roles/ci-bot", map[string]interface{}{
+		"username": "ci-bot", "scopes": "read:repository",
 	})
-	creds := req(t, b, s, logical.ReadOperation, "creds/teabot", nil)
+	creds := req(t, b, s, logical.ReadOperation, "creds/ci-bot", nil)
 	if creds.Secret == nil {
 		t.Fatal("mint after rotate-root failed")
 	}

@@ -63,17 +63,17 @@ run_engine() {
   green "[${engine}] rotated root password"
 
   # --- role + dynamic creds ---
-  ex write "${MOUNT}/roles/teabot" username="teabot" \
+  ex write "${MOUNT}/roles/ci-bot" username="ci-bot" \
     scopes="read:repository,write:issue" ttl=1h max_ttl=24h >/dev/null
   local json id lease tok user
-  json="$(ex read -format=json "${MOUNT}/creds/teabot")"
+  json="$(ex read -format=json "${MOUNT}/creds/ci-bot")"
   id="$(printf '%s' "${json}" | jq_field '["data"]["token_id"]')"
   lease="$(printf '%s' "${json}" | jq_field '["lease_id"]')"
   tok="$(printf '%s' "${json}" | jq_field '["data"]["token"]')"
   user="$(printf '%s' "${json}" | jq_field '["data"]["username"]')"
   [ -n "${id}" ] || fail "[${engine}] no dynamic token id returned"
   [ -n "${tok}" ] || fail "[${engine}] dynamic creds returned empty token value"
-  [ "${user}" = "teabot" ] || fail "[${engine}] wrong username ${user}"
+  [ "${user}" = "ci-bot" ] || fail "[${engine}] wrong username ${user}"
   green "[${engine}] dynamic token id=${id} issued for ${user} (lease ${lease})"
 
   # revoke -> token deleted from gitea (idempotent: a second revoke is a no-op)

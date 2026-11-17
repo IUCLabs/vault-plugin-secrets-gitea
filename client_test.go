@@ -29,26 +29,26 @@ func TestClientCreateAndDeleteToken(t *testing.T) {
 	c := testClient(t, srv.URL)
 	ctx := context.Background()
 
-	value, id, err := c.CreateToken(ctx, "teabot", "vault-teabot-abcd1234", []string{"read:repository"})
+	value, id, err := c.CreateToken(ctx, "ci-bot", "vault-ci-bot-abcd1234", []string{"read:repository"})
 	if err != nil {
 		t.Fatalf("CreateToken: %v", err)
 	}
 	if value == "" || id == "" {
 		t.Fatalf("CreateToken returned empty value/id: %q %q", value, id)
 	}
-	if !fake.has("teabot", id) {
+	if !fake.has("ci-bot", id) {
 		t.Fatal("token not stored in fake")
 	}
 
-	if err := c.DeleteToken(ctx, "teabot", id); err != nil {
+	if err := c.DeleteToken(ctx, "ci-bot", id); err != nil {
 		t.Fatalf("DeleteToken: %v", err)
 	}
-	if fake.has("teabot", id) {
+	if fake.has("ci-bot", id) {
 		t.Fatal("token still present after delete")
 	}
 
 	// Deleting a non-existent token (404) is treated as success.
-	if err := c.DeleteToken(ctx, "teabot", "999999"); err != nil {
+	if err := c.DeleteToken(ctx, "ci-bot", "999999"); err != nil {
 		t.Fatalf("DeleteToken of missing token should succeed, got: %v", err)
 	}
 }
@@ -59,7 +59,7 @@ func TestClientUnauthorized(t *testing.T) {
 	defer srv.Close()
 
 	c := testClient(t, srv.URL) // uses "seed-password", which is wrong here
-	_, _, err := c.CreateToken(context.Background(), "teabot", "x", []string{"read:repository"})
+	_, _, err := c.CreateToken(context.Background(), "ci-bot", "x", []string{"read:repository"})
 	if err == nil {
 		t.Fatal("expected unauthorized error with wrong password")
 	}
