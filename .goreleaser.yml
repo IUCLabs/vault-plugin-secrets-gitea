@@ -1,0 +1,56 @@
+version: 2
+project_name: vault-plugin-secrets-gitea
+
+builds:
+  - main: ./cmd/vault-plugin-secrets-gitea
+    env:
+      - CGO_ENABLED=0
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{ .Tag }}
+    goos: [linux]
+    goarch: [amd64]
+
+archives:
+  - formats: [none]
+
+nfpms:
+  - &rpm
+    id: vault
+    package_name: vault-plugin-secrets-gitea
+    bindir: /opt/vault-plugins
+    scripts:
+      preinstall: packaging/scripts/preinstall-vault.sh
+    replaces: [vault-plugin-secrets-gitea]
+    provides: [vault-plugin-secrets-gitea]
+    formats: [rpm]
+    file_name_template: "{{ .ConventionalFileName }}"
+    release: "1"
+    section: default
+    priority: extra
+    description: Vault/OpenBao secrets engine for ephemeral, scoped Gitea access tokens
+    maintainer: IUCLabs
+    homepage: https://github.com/IUCLabs/vault-plugin-secrets-gitea
+    license: MIT
+  - <<: *rpm
+    id: openbao
+    package_name: openbao-plugin-secrets-gitea
+    bindir: /opt/openbao-plugins
+    scripts:
+      preinstall: packaging/scripts/preinstall-openbao.sh
+    replaces: [openbao-plugin-secrets-gitea]
+    provides: [openbao-plugin-secrets-gitea]
+
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_SHA256SUMS"
+  algorithm: sha256
+
+signs:
+  - artifacts: checksum
+    cmd: scripts/sign.sh
+    args: ["${artifact}", "${signature}"]
+
+changelog:
+  disable: true
