@@ -32,30 +32,97 @@ To manage the engine from Terraform, use
 
 ## Installation
 
-Download a binary from the
-[releases page](https://github.com/IUCLabs/vault-plugin-secrets-gitea/releases),
-or build one:
+Release assets download through artifactapi's GitHub proxy, which serves
+`https://artifactapi.k8s.syd1.au.unkin.net/api/v1/remote/github/IUCLabs/vault-plugin-secrets-gitea/releases/download/<tag>/<file>`.
+Each method below ends with `SHA256` set for [registration](#register-and-enable).
+With OpenBao, use `bao` in place of `vault`.
 
 ```sh
-git clone https://github.com/IUCLabs/vault-plugin-secrets-gitea.git
-cd vault-plugin-secrets-gitea
-make build   # writes dist/vault-plugin-secrets-gitea
+TAG=vX.Y.Z  # the release to install
+V=${TAG#v}
+BASE=https://artifactapi.k8s.syd1.au.unkin.net/api/v1/remote/github/IUCLabs/vault-plugin-secrets-gitea/releases/download/$TAG
 ```
 
-Copy the binary into the server's `plugin_directory`, then register it and
-enable the engine. With OpenBao, use `bao` in place of `vault`.
+### RPM
+
+`vault-plugin-secrets-gitea` installs `/usr/libexec/vault-plugins/vault-plugin-secrets-gitea`;
+`openbao-plugin-secrets-gitea` installs it in `/usr/libexec/openbao-plugins/`.
+Set the server's `plugin_directory` to that directory.
 
 ```sh
-SHA256=$(sha256sum vault-plugin-secrets-gitea | cut -d' ' -f1)
+dnf install vault-plugin-secrets-gitea  # from a yum repo carrying it, or from the release:
+dnf install "$BASE/vault-plugin-secrets-gitea-$V-1.x86_64.rpm"  # openbao-plugin-secrets-gitea-$V-1.x86_64.rpm for OpenBao
 
+SHA256=$(sha256sum /usr/libexec/vault-plugins/vault-plugin-secrets-gitea | cut -d' ' -f1)
+```
+
+### Released binary
+
+`vault-plugin-secrets-gitea_<version>_SHA256SUMS` lists the binary and the RPMs, and
+`SHA256SUMS.sig` is its detached signature by the IUCLabs release GPG key.
+
+```sh
+curl -fLO "$BASE/vault-plugin-secrets-gitea_${V}_linux_amd64"
+curl -fLO "$BASE/vault-plugin-secrets-gitea_${V}_SHA256SUMS"
+curl -fLO "$BASE/vault-plugin-secrets-gitea_${V}_SHA256SUMS.sig"
+gpg --verify "vault-plugin-secrets-gitea_${V}_SHA256SUMS.sig" "vault-plugin-secrets-gitea_${V}_SHA256SUMS"
+sha256sum --check --ignore-missing "vault-plugin-secrets-gitea_${V}_SHA256SUMS"
+
+install -m 0755 "vault-plugin-secrets-gitea_${V}_linux_amd64" <plugin_directory>/vault-plugin-secrets-gitea
+SHA256=$(sha256sum <plugin_directory>/vault-plugin-secrets-gitea | cut -d' ' -f1)
+```
+
+### Kubernetes image volume
+
+`ghcr.io/iuclabs/vault-plugin-secrets-gitea:<tag>` is a `FROM scratch` image holding only
+`/vault-plugin-secrets-gitea`. Mount it read-only into the Vault/OpenBao container with an
+[image volume](https://kubernetes.io/docs/concepts/storage/volumes/#image):
+Kubernetes 1.31+ with the `ImageVolume` feature gate (beta, on by default from
+1.33). Vault and OpenBao only run a binary that sits directly in
+`plugin_directory`, not in a subdirectory, so mount the file itself with
+`subPath`, which on image volumes needs 1.33+.
+
+```yaml
+spec:
+  containers:
+    - name: vault
+      volumeMounts:
+        - name: plugin-gitea
+          mountPath: /vault/plugins/vault-plugin-secrets-gitea  # <plugin_directory>/vault-plugin-secrets-gitea
+          subPath: vault-plugin-secrets-gitea
+          readOnly: true
+  volumes:
+    - name: plugin-gitea
+      image:
+        reference: ghcr.io/iuclabs/vault-plugin-secrets-gitea:vX.Y.Z
+        pullPolicy: IfNotPresent
+```
+
+The image holds the released binary, so its sha256 is the `linux_amd64` line
+of `SHA256SUMS`:
+
+```sh
+SHA256=$(curl -fsSL "$BASE/vault-plugin-secrets-gitea_${V}_SHA256SUMS" | awk '/_linux_amd64$/ {print $1}')
+```
+
+### From source
+
+```sh
+make build  # writes ./dist/vault-plugin-secrets-gitea
+```
+
+Copy it into `plugin_directory` and take `SHA256` from `sha256sum` as above.
+
+### Register and enable
+
+```sh
 vault plugin register -sha256="$SHA256" secret vault-plugin-secrets-gitea
 vault secrets enable -path=gitea vault-plugin-secrets-gitea
 ```
 
-After replacing the binary, register the new checksum and reload the plugin:
+After replacing the binary, register the new sha256 and reload the plugin:
 
 ```sh
-vault plugin register -sha256="$NEW_SHA256" secret vault-plugin-secrets-gitea
 vault write sys/plugins/reload/backend plugin=vault-plugin-secrets-gitea
 ```
 
